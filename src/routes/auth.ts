@@ -6,6 +6,7 @@ import { generateAccessToken, generateRefreshToken } from '../utils/tokens.js'
 import jwt from 'jsonwebtoken'
 import bcrypt from "bcrypt";
 import { verifyToken } from '../middleware/auth.js'
+import { logger } from '../utils/logger.js'
 
 const registerLoginSchema = {
     body: z.object({
@@ -41,7 +42,7 @@ export async function authRoutes(fastify: FastifyInstance) {
             if (e.cause?.code == '23505') {
                 return reply.status(409).send({ error: 'Email already taken' })
             }
-            console.log(e)
+            logger.error(`Register failed: ${e}`)
             return reply.status(500).send({ success: false, message: 'Could not create user' })
         }
         return reply.status(201).send({ success: true })
@@ -107,7 +108,7 @@ export async function authRoutes(fastify: FastifyInstance) {
             await db.deleteUser(request.userId)
             return reply.status(200).send({ success: true })
         } catch (e) {
-            console.log(e)
+            logger.error(`Delete user failed: ${e}`)
             return reply.status(500).send({ error: 'Could not delete user' })
         }
     })
@@ -125,7 +126,7 @@ export async function authRoutes(fastify: FastifyInstance) {
 
             return reply.status(200).send({ accessToken: generateAccessToken(payload.userId) })
         } catch (e) {
-            console.log(e)
+            logger.warn(`Refresh token invalid: ${e}`)
             return reply.status(401).send('Invalid or expired token')
         }
     })

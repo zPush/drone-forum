@@ -3,6 +3,7 @@ import * as db from '../utils/db.js'
 import { z } from 'zod'
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
 import { verifyToken } from '../middleware/auth.js'
+import { logger } from '../utils/logger.js'
 
 const postSchema = {
     body: z.object({
@@ -22,33 +23,35 @@ export async function postRoutes(fastify: FastifyInstance) {
     // POST - Post a new post as user
     fastify.withTypeProvider<ZodTypeProvider>().post('/post', { preHandler: verifyToken, schema: postSchema }, async function(request, reply) {
         try {
-            db.createPost(
+            await db.createPost(
                 request.body.title,
                 request.body.content,
                 request.body.author
             )
         } catch (e) {
-            reply.status(500).send({ error: e })
+            logger.error(`Create post failed: ${e}`)
+            return reply.status(500).send({ error: 'Could not create post' })
         }
-        reply.status(200).send({ success: true })
+        return reply.status(200).send({ success: true })
     })
 
     // DELETE - Delete Post
     fastify.withTypeProvider<ZodTypeProvider>().delete('/post/:id', { preHandler: verifyToken, schema: deletPostSchema }, async function(request, reply) {
         try {
-            db.deletePost(
+            await db.deletePost(
                 request.params.id
             )
         } catch (e) {
-            reply.status(500).send({ error: e })
+            logger.error(`Delete post failed: ${e}`)
+            return reply.status(500).send({ error: 'Could not delete post' })
         }
-        reply.status(200).send({ success: true })
+        return reply.status(200).send({ success: true })
     })
 
     // GET - Get all posts
-    fastify.withTypeProvider<ZodTypeProvider>().get('/allPosts', { preHandler: verifyToken }, async function(req, reply) {
+    fastify.withTypeProvider<ZodTypeProvider>().get('/allPosts', { preHandler: verifyToken }, async function(_req, reply) {
         try {
-            return reply.status(200).send({data: await db.getPosts()})
+            return reply.status(201).send({data: await db.getPosts()})
         } catch(e) {
             return reply.status(500).send('Something went wrong')
         }

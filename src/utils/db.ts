@@ -3,6 +3,7 @@ import { drizzle } from 'drizzle-orm/node-postgres'
 import { eq } from 'drizzle-orm'
 import pg from 'pg'
 import { usersTable, postsTable } from '../db/schema.js';
+import { logger } from './logger.js'
 
 dotenv.config();
 
@@ -34,7 +35,7 @@ export async function updatePassword(id: string, hashedPassword: string) {
 
 export async function deleteUser(email: string) {
     await db.delete(usersTable).where(eq(usersTable.email, email));
-    console.log('User deleted!')
+    logger.success('User deleted')
 }
 
 // Posts
@@ -46,12 +47,11 @@ export async function createPost(title: string, content: string, authorId: strin
         authorId: authorId
     }
     await db.insert(postsTable).values(post)
-    console.log('Post created!')
 }
 
 export async function deletePost(id: string) {
     await db.delete(postsTable).where(eq(postsTable.id, id))
-    console.log('Post deleted!')
+    logger.success('Post deleted')
 }
 
 export async function getPosts() {
