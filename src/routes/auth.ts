@@ -4,9 +4,8 @@ import { z } from 'zod'
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
 import { generateAccessToken, generateRefreshToken } from '../utils/tokens.js'
 import jwt from 'jsonwebtoken'
-
-
 import bcrypt from "bcrypt";
+import { verifyToken } from '../middleware/auth.js'
 
 const registerLoginSchema = {
     body: z.object({
@@ -17,7 +16,14 @@ const registerLoginSchema = {
 
 const profileSchema = {
     params: z.object({
-        email: z.email(),
+        email: z.string()
+    })
+}
+
+const changePasswordSchema = {
+    body: z.object({
+        currentPassword: z.string().min(8),
+        newPassword: z.string().min(8),
     })
 }
 export async function authRoutes(fastify: FastifyInstance) {
@@ -33,14 +39,12 @@ export async function authRoutes(fastify: FastifyInstance) {
         } catch (e) {
             //@ts-ignore
             if (e.cause?.code == '23505') {
-                reply.status(409).send({ error: 'Email already taken' })
-            } else {
-                reply.status(500).send({ success: false, message: 'Could not create user' })
-                console.log(e)
+                return reply.status(409).send({ error: 'Email already taken' })
             }
+            console.log(e)
             return reply.status(500).send({ success: false, message: 'Could not create user' })
         }
-        reply.status(201).send({success: true})
+        return reply.status(201).send({ success: true })
     })
 
     // POST - LOGIN
@@ -54,7 +58,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         // compare passwords
         const passwordsMatch = await bcrypt.compare(request.body.password, user.password)
         if (!passwordsMatch) {
-            return reply.status(401).send({ error: 'Credentials do not match.'})
+            return reply.status(401).send({ error: 'Credentials do not match.' })
         }
         const accessToken = generateAccessToken(user.id)
         const refreshToken = generateRefreshToken(user.id)
@@ -66,32 +70,52 @@ export async function authRoutes(fastify: FastifyInstance) {
             path: '/api/v1/auth/refresh'
         })
 
-        reply.status(200).send({ accessToken: accessToken })
+        return reply.status(200).send({ accessToken: accessToken })
     })
 
     // GET - Get Profile
-    fastify.withTypeProvider<ZodTypeProvider>().get('/profile/:email', { schema: profileSchema }, async function (request, reply) {
-        const user = await db.getUser(request.params.email)
+    fastify.withTypeProvider<ZodTypeProvider>().get('/profile', { preHandler: verifyToken }, async function (request, reply) {
+        const user = await db.getUserById(request.userId)
         if (!user) {
             return reply.status(404).send({ error: 'User not found' })
         }
         return reply.send({ data: { id: user.id, email: user.email } })
     })
 
+    // POST - Change password
+    fastify.withTypeProvider<ZodTypeProvider>().post('/changePassword', { preHandler: verifyToken, schema: changePasswordSchema }, async function (request, reply) {
+        const user = await db.getUserById(request.userId)
+        if (!user) {
+            return reply.status(404).send({ error: 'User not found' })
+        }
+
+        // Check if entered password matches current password to reset
+        const match = await bcrypt.compare(request.body.currentPassword, user.password)
+        if (!match) return reply.status(401).send({ error: 'Wrong password' })
+
+        // Check if user want to set his password to current password
+        if (request.body.currentPassword == request.body.newPassword) return reply.status(400).send({error: 'Set a different password.'})
+
+        const hashedNew = await bcrypt.hash(request.body.newPassword, 10)
+        await db.updatePassword(request.userId, hashedNew)
+        return reply.status(200).send({ success: true })
+    })
+
     // DELETE - Delete Profile
-    fastify.withTypeProvider<ZodTypeProvider>().delete('/delete/:email', { schema: profileSchema }, async function (request, reply) {
+    fastify.withTypeProvider<ZodTypeProvider>().delete('/delete/:email', { preHandler: verifyToken, schema: profileSchema }, async function (request, reply) {
         try {
-            await db.deleteUser(request.params.email)
+            await db.deleteUser(request.userId)
         } catch (e) {
             console.log(e)
-            reply.status(500).send({ error: e })
+            return reply.status(500).send({ error: 'Could not delete user' })
         }
 
         reply.status(200).send({ success: true })
     })
 
     const refreshToken = process.env.REFRESH_TOKEN_SECRET
-    // GET - Refresh token
+    
+    // POST - Refresh token
     fastify.withTypeProvider<ZodTypeProvider>().post('/refresh', async function (request, reply) {
         if (!request.cookies.refreshToken) {
             return reply.status(401).send('Not authorized.')
@@ -100,8 +124,8 @@ export async function authRoutes(fastify: FastifyInstance) {
         try {
             const payload = jwt.verify(request.cookies.refreshToken, refreshToken!) as unknown as { userId: string }
 
-            return reply.status(200).send({accessToken: generateAccessToken(payload.userId)})
-        } catch(e) {
+            return reply.status(200).send({ accessToken: generateAccessToken(payload.userId) })
+        } catch (e) {
             console.log(e)
             return reply.status(401).send('Invalid or expired token')
         }

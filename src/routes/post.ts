@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import * as db from '../utils/db.js'
 import { z } from 'zod'
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
+import { verifyToken } from '../middleware/auth.js'
 
 const postSchema = {
     body: z.object({
@@ -18,7 +19,7 @@ const deletPostSchema = {
 }
 
 export async function postRoutes(fastify: FastifyInstance) {
-    // POST - User Post
+    // POST - Post a new post as user
     fastify.withTypeProvider<ZodTypeProvider>().post('/post', {schema: postSchema }, async function(request, reply) {
         try {
             db.createPost(
@@ -32,6 +33,7 @@ export async function postRoutes(fastify: FastifyInstance) {
         reply.status(200).send({ success: true })
     })
 
+    // DELETE - Delete Post
     fastify.withTypeProvider<ZodTypeProvider>().delete('/post/:id', {schema: deletPostSchema }, async function(request, reply) {
         try {
             db.deletePost(
@@ -41,5 +43,14 @@ export async function postRoutes(fastify: FastifyInstance) {
             reply.status(500).send({ error: e })
         }
         reply.status(200).send({ success: true })
+    })
+
+    // GET - Get all posts
+    fastify.withTypeProvider<ZodTypeProvider>().get('/allPosts', { preHandler: verifyToken }, async function(req, reply) {
+        try {
+            return reply.status(200).send({data: await db.getPosts()})
+        } catch(e) {
+            return reply.status(500).send('Something went wrong')
+        }
     })
 }

@@ -15,19 +15,27 @@ export async function createUser(email: string, password: string) {
         password: password,
     };
     await db.insert(usersTable).values(user);
-    console.log('New user created!')
 }
 
 export async function getUser(email: string) {
-    const result = await db.select().from(usersTable).where(eq(usersTable.email, email));
-    return result[0] ?? null;
+    const result = await db.select().from(usersTable).where(eq(usersTable.email, email))
+    return result[0] ?? null
+}
+
+export async function getUserById(id: string) {
+    const result = await db.select().from(usersTable).where(eq(usersTable.id, id))
+    return result[0] ?? null
+}
+
+// pw hashed
+export async function updatePassword(id: string, hashedPassword: string) {
+    await db.update(usersTable).set({ password: hashedPassword }).where(eq(usersTable.id, id))
 }
 
 export async function deleteUser(email: string) {
     await db.delete(usersTable).where(eq(usersTable.email, email));
     console.log('User deleted!')
 }
-
 
 // Posts
 
@@ -44,4 +52,8 @@ export async function createPost(title: string, content: string, authorId: strin
 export async function deletePost(id: string) {
     await db.delete(postsTable).where(eq(postsTable.id, id))
     console.log('Post deleted!')
+}
+
+export async function getPosts() {
+    return await db.select().from(postsTable)
 }
