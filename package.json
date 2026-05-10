@@ -6,12 +6,18 @@
     "typescript": "^6.0.3"
   },
   "dependencies": {
+    "@fastify/type-provider-zod": "^1.0.0",
     "@neondatabase/serverless": "^1.1.0",
     "@types/pg": "^8.20.0",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
+    "fastify": "^5.8.5",
     "pg": "^8.20.0",
     "ts-node": "^10.9.2"
   },
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "api": "tsx src/index.ts",
+    "pushdb": "drizzle-kit push"
+  }
 }
