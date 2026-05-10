@@ -38,10 +38,8 @@ export async function authRoutes(fastify: FastifyInstance) {
                 reply.status(500).send({ success: false, message: 'Could not create user' })
                 console.log(e)
             }
-            return
+            return reply.status(500).send({ success: false, message: 'Could not create user' })
         }
-
-        reply.status(201).send({ success: true })
     })
 
     // POST - LOGIN
@@ -71,8 +69,12 @@ export async function authRoutes(fastify: FastifyInstance) {
     })
 
     // GET - Get Profile
-    fastify.withTypeProvider<ZodTypeProvider>().get('/profile/:email', { schema: profileSchema }, function (request, reply) {
-        reply.send({ params: request.params })
+    fastify.withTypeProvider<ZodTypeProvider>().get('/profile/:email', { schema: profileSchema }, async function (request, reply) {
+        const user = await db.getUser(request.params.email)
+        if (!user) {
+            return reply.status(404).send({ error: 'User not found' })
+        }
+        return reply.send({ data: { id: user.id, email: user.email } })
     })
 
     // DELETE - Delete Profile
