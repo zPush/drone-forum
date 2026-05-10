@@ -2,7 +2,6 @@ import type { FastifyInstance } from 'fastify'
 import * as db from '../utils/db.js'
 import { z } from 'zod'
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
-import { register } from 'node:module'
 
 const registerLoginSchema = {
     body: z.object({
@@ -26,6 +25,7 @@ export async function authRoutes(fastify: FastifyInstance) {
                 request.body.password
             )
         } catch(e) {
+            //@ts-ignore
             if (e.cause?.code == '23505') {
                 reply.status(409).send({ error: 'Email already taken' })
             } else {

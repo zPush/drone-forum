@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { eq } from 'drizzle-orm'
 import pg from 'pg'
-import { usersTable } from '../db/schema.js';
+import { usersTable, postsTable } from '../db/schema.js';
 
 dotenv.config();
 
@@ -27,4 +27,22 @@ export async function getUser(email: string) {
 export async function deleteUser(email: string) {
     await db.delete(usersTable).where(eq(usersTable.email, email));
     console.log('User deleted!')
+}
+
+
+// Posts
+
+export async function createPost(title: string, content: string, authorId: string) {
+    const post: typeof postsTable.$inferInsert = {
+        title: title,
+        content: content,
+        authorId: authorId
+    }
+    await db.insert(postsTable).values(post)
+    console.log('Post created!')
+}
+
+export async function deletePost(id: string) {
+    await db.delete(postsTable).where(eq(postsTable.id, id))
+    console.log('Post deleted!')
 }
