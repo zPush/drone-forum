@@ -105,16 +105,15 @@ export async function authRoutes(fastify: FastifyInstance) {
     fastify.withTypeProvider<ZodTypeProvider>().delete('/delete/:email', { preHandler: verifyToken, schema: profileSchema }, async function (request, reply) {
         try {
             await db.deleteUser(request.userId)
+            return reply.status(200).send({ success: true })
         } catch (e) {
             console.log(e)
             return reply.status(500).send({ error: 'Could not delete user' })
         }
-
-        reply.status(200).send({ success: true })
     })
 
     const refreshToken = process.env.REFRESH_TOKEN_SECRET
-    
+
     // POST - Refresh token
     fastify.withTypeProvider<ZodTypeProvider>().post('/refresh', async function (request, reply) {
         if (!request.cookies.refreshToken) {
@@ -130,4 +129,12 @@ export async function authRoutes(fastify: FastifyInstance) {
             return reply.status(401).send('Invalid or expired token')
         }
     })
+
+    // Logout (clear token)
+    fastify.post('/logout', async function (request, reply) {
+    reply.clearCookie('refreshToken', {
+        path: '/api/v1/auth/refresh'
+    })
+    return reply.status(200).send({ success: true })
+})
 }

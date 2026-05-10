@@ -20,7 +20,7 @@ const deletPostSchema = {
 
 export async function postRoutes(fastify: FastifyInstance) {
     // POST - Post a new post as user
-    fastify.withTypeProvider<ZodTypeProvider>().post('/post', {schema: postSchema }, async function(request, reply) {
+    fastify.withTypeProvider<ZodTypeProvider>().post('/post', { preHandler: verifyToken, schema: postSchema }, async function(request, reply) {
         try {
             db.createPost(
                 request.body.title,
@@ -34,7 +34,7 @@ export async function postRoutes(fastify: FastifyInstance) {
     })
 
     // DELETE - Delete Post
-    fastify.withTypeProvider<ZodTypeProvider>().delete('/post/:id', {schema: deletPostSchema }, async function(request, reply) {
+    fastify.withTypeProvider<ZodTypeProvider>().delete('/post/:id', { preHandler: verifyToken, schema: deletPostSchema }, async function(request, reply) {
         try {
             db.deletePost(
                 request.params.id

@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import Fastify from 'fastify'
+import cookie from '@fastify/cookie'
 import { serializerCompiler, validatorCompiler } from '@fastify/type-provider-zod'
 import { authRoutes } from '../src/routes/auth.js'
 import * as db from '../src/utils/db.js'
@@ -9,6 +10,7 @@ const TEST_PASSWORD = 'password123'
 
 function buildApp() {
     const app = Fastify()
+    app.register(cookie)
     app.setValidatorCompiler(validatorCompiler)
     app.setSerializerCompiler(serializerCompiler)
     app.register(authRoutes, { prefix: '/api/v1/auth' })
@@ -85,9 +87,16 @@ describe('DELETE /api/v1/auth/delete/:email', () => {
             url: '/api/v1/auth/register',
             body: { email: TEST_EMAIL, password: TEST_PASSWORD }
         })
+        const loginRes = await app.inject({
+            method: 'POST',
+            url: '/api/v1/auth/login',
+            body: { email: TEST_EMAIL, password: TEST_PASSWORD }
+        })
+        const { accessToken } = loginRes.json()
         const res = await app.inject({
             method: 'DELETE',
-            url: `/api/v1/auth/delete/${TEST_EMAIL}`
+            url: `/api/v1/auth/delete/${TEST_EMAIL}`,
+            headers: { authorization: `Bearer ${accessToken}` }
         })
         expect(res.statusCode).toBe(200)
         expect(res.json()).toMatchObject({ success: true })
