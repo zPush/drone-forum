@@ -40,6 +40,7 @@ export async function authRoutes(fastify: FastifyInstance) {
             }
             return reply.status(500).send({ success: false, message: 'Could not create user' })
         }
+        reply.status(201).send({success: true})
     })
 
     // POST - LOGIN
