@@ -20,20 +20,15 @@ export async function authRoutes(fastify: FastifyInstance) {
     // POST - REGISTER
     fastify.withTypeProvider<ZodTypeProvider>().post('/register', { schema: registerLoginSchema }, async function (request, reply) {
         try {
-            await db.createUser(
-                request.body.email,
-                request.body.password
-            )
+            await db.createUser(request.body.email, request.body.password)
+            return reply.status(201).send({ success: true })
         } catch(e) {
             //@ts-ignore
             if (e.cause?.code == '23505') {
-                reply.status(409).send({ error: 'Email already taken' })
-            } else {
-                reply.status(500).send({ success: false, message: 'Could not create user' })
+                return reply.status(409).send({ error: 'Email already taken' })
             }
+            return reply.status(500).send({ success: false, message: 'Could not create user' })
         }
-
-        reply.status(201).send({ success: true })
     })
 
     // POST - LOGIN
@@ -42,8 +37,12 @@ export async function authRoutes(fastify: FastifyInstance) {
     })
 
     // GET - Get Profile
-    fastify.withTypeProvider<ZodTypeProvider>().get('/profile/:email', { schema: profileSchema }, function (request, reply) {
-        reply.send({ params: request.params })
+    fastify.withTypeProvider<ZodTypeProvider>().get('/profile/:email', { schema: profileSchema }, async function (request, reply) {
+        const user = await db.getUser(request.params.email)
+        if (!user) {
+            return reply.status(404).send({ error: 'User not found' })
+        }
+        return reply.send({ data: { id: user.id, email: user.email } })
     })
 
     // DELETE - Delete Profile

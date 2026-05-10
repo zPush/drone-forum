@@ -6,7 +6,7 @@ import { usersTable, postsTable } from '../db/schema.js';
 
 dotenv.config();
 
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL! })
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL!, ssl: { rejectUnauthorized: true } })
 const db = drizzle(pool)
 
 export async function createUser(email: string, password: string) {
@@ -19,9 +19,8 @@ export async function createUser(email: string, password: string) {
 }
 
 export async function getUser(email: string) {
-    const user = await db.select().from(usersTable).where(eq(usersTable.email, email));
-    console.log('User found:', user);
-
+    const result = await db.select().from(usersTable).where(eq(usersTable.email, email));
+    return result[0] ?? null;
 }
 
 export async function deleteUser(email: string) {
