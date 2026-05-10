@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import * as db from '../utils/db.js'
 import { z } from 'zod'
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
+import { register } from 'node:module'
 
 const registerLoginSchema = {
     body: z.object({
@@ -18,9 +19,21 @@ const profileSchema = {
 
 export async function authRoutes(fastify: FastifyInstance) {
     // POST - REGISTER
-    fastify.withTypeProvider<ZodTypeProvider>().post('/register', { schema: registerLoginSchema }, function (request, reply) {
-        db.createUser('test', 'pw123')
-        reply.send({ hello: 'world' })
+    fastify.withTypeProvider<ZodTypeProvider>().post('/register', { schema: registerLoginSchema }, async function (request, reply) {
+        try {
+            await db.createUser(
+                request.body.email,
+                request.body.password
+            )
+        } catch(e) {
+            if (e.cause?.code == '23505') {
+                reply.status(409).send({ error: 'Email already taken' })
+            } else {
+                reply.status(500).send({ success: false, message: 'Could not create user' })
+            }
+        }
+
+        reply.status(201).send({ success: true })
     })
 
     // POST - LOGIN
@@ -28,8 +41,20 @@ export async function authRoutes(fastify: FastifyInstance) {
         reply.send({ ok: true })
     })
 
-    // GET - Profile
+    // GET - Get Profile
     fastify.withTypeProvider<ZodTypeProvider>().get('/profile/:email', { schema: profileSchema }, function (request, reply) {
         reply.send({ params: request.params })
+    })
+
+    // DELETE - Delete Profile
+    fastify.withTypeProvider<ZodTypeProvider>().delete('/delete/:email', { schema: profileSchema }, async function(request, reply) {
+        try {
+            await db.deleteUser(request.params.email)
+        } catch(e) {
+            console.log(e)
+            reply.status(500).send({ error: e })
+        }
+
+        reply.status(200).send({ success: true })
     })
 }
