@@ -56,7 +56,7 @@ A REST API backend for a drone enthusiast forum. Built as a learning project to 
 ### Setup
 
 ```bash
-git clone https://github.com/your-username/droneforum.git
+git clone https://github.com/zPush/drone-forum.git
 cd droneforum
 npm install
 ```
